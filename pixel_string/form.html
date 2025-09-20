@@ -1,0 +1,316 @@
+<html>
+<head>
+    <title>Pixel String</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+     <style>
+         legend {
+            font-style: italic;
+            font-weight: bold;
+        }
+        fieldset {
+            margin-bottom:7px;
+            max-width: 1024px;
+        }
+        canvas {
+            border: 1px solid #000000;
+            height: 20;
+            width: 100%;
+            grid-column: 1;
+        }
+
+        input[type='range'] {
+            width: 100%;
+        }
+        input[type='number'] {
+            width: 100%;
+            max-width: 10em;
+        }
+
+        .grid {
+            display: grid;
+            row-gap: 10px;
+            grid-template-columns: auto;
+        }
+
+        input {
+            grid-column: 1;
+        }
+ 
+        label {
+            grid-column: 1;
+        }
+
+        @media screen and (min-width: 550px) {
+        .grid {
+            display: grid;
+            column-gap: 20px;
+            grid-template-columns: 100px auto 10em;
+        }
+
+        input {
+            grid-column: 2;
+        }
+ 
+        label {
+            grid-column: 1;
+        }
+
+        canvas {
+            border: 1px solid #000000;
+            height: 20;
+            width: 100%;
+            grid-column: 2;
+        }
+
+        .c3 {
+            grid-column: 3;
+        }
+
+        .r1 {
+            grid-row: 1;
+        }
+
+        .r2 {
+            grid-row: 2;
+        }
+
+        .r3 {
+            grid-row: 3;
+        }
+
+        .r4 {
+            grid-row: 4;
+        }
+    }
+    </style>
+
+    <script>
+
+var baseURI = document.baseURI;
+baseURI="http://pixel_string.local";
+
+// Values for pixel string Colour in HSV
+var huePixels = 0;
+var satPixels = 1;
+var valPixels = 1;
+
+
+function hsvToRgb( hue,  saturation, value){
+    let r = g = b = 0;
+
+    if(hue > 1.0) hue = 1.0;
+    if(saturation > 1.0) saturation = 1.0;
+    if(value > 1.0) value = 1.0;
+
+    const h = Math.floor(hue * 6);
+    const f = hue * 6 - h;
+    const p = value * (1 - saturation);
+    const q = value * (1 - f * saturation);
+    const t = value * (1 - (1 - f) * saturation);
+
+    if (h == 0) {
+        r = value;
+        g = t;
+        b = p;
+    } else if (h == 1) {
+        r = q;
+        g = value;
+        b = p;
+    } else if (h == 2) {
+        r = p;
+        g = value;
+        b = t;
+    } else if (h == 3) {
+        r = p;
+        g = q;
+        b = value;
+    } else if (h == 4) {
+        r = t;
+        g = p;
+        b = value;
+    } else if (h <= 6) {
+        r = value;
+        g = p;
+        b = q;
+    } 
+
+    function hex(v){
+        let h = Math.floor(v).toString(16);
+        return h.length == 1 ? '0'+ h : h;
+    }
+
+    const rgb = '#' + 
+        hex(r * 255) +
+        hex(g * 255)  +
+        hex(b * 255);
+    return rgb;
+}
+// Function for filling in the hue picker
+function h2RGB(hue, data, index) {
+
+    let r = g = b = 0;
+
+    if (hue > 1.0) hue = 1.0;
+
+    let h = Math.floor(hue * 6);
+    let f = hue * 6 - h;
+    let p = 0;
+    let q = (1 - f);
+    let t = f;
+
+    if (h == 0) {
+        r = 1;
+        g = t;
+        b = p;
+    } else if (h == 1) {
+        r = q;
+        g = 1;
+        b = p;
+    } else if (h == 2) {
+        r = p;
+        g = 1;
+        b = t;
+    } else if (h == 3) {
+        r = p;
+        g = q;
+        b = 1;
+    } else if (h == 4) {
+        r = t;
+        g = p;
+        b = 1;
+    } else if (h <= 6) {
+        r = 1;
+        g = p;
+        b = q;
+    }
+
+    data[index + 0] = Math.floor(r * 255);
+    data[index + 1] = Math.floor(g * 255);
+    data[index + 2] = Math.floor(b * 255);
+    data[index + 3] = 255;
+
+}
+
+function drawRGB(name, onclick) {
+    var c = document.getElementById(name);
+    var ctx = c.getContext("2d");
+
+    const imageData = ctx.getImageData(0, 0, c.width, c.height);
+    const data = imageData.data;
+    let index = 0;
+    for (let iy = 0; iy < imageData.height; iy++) {
+        for (let ix = 0; ix < imageData.width; ix++) {
+            h2RGB(ix / imageData.width, data, index);
+            index += 4; // bytes per pixel
+        }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    function pick(event) {
+        const bounding = c.getBoundingClientRect();
+        const x = event.clientX - bounding.left;
+        const y = event.clientY - bounding.top;
+        const hue = x / bounding.width;
+        if(onclick){
+            onclick(hue);
+        }
+        return hue;
+    }
+
+    c.addEventListener("click", (event) => pick(event, undefined));
+}
+
+// Send settings for string colour & brightness
+function sendPixelColour(){
+    const url = new URL("/set", baseURI);
+    url.search=`?h=${huePixels}&s=${satPixels}&v=${valPixels}`;
+    let pr = fetch(url, {
+        method: 'GET',
+    });
+}
+
+
+function setChase(on){
+    const url = on ? new URL("/chase_on", baseURI) : new URL("/chase_off", baseURI);
+    let pr = fetch(url, {
+        method: 'GET',
+    }); 
+}
+
+function setRainbow(on){
+    const url = on ? new URL("/rainbow_on", baseURI) : new URL("/rainbow_off", baseURI);
+    let pr = fetch(url, {
+        method: 'GET',
+    }); 
+}
+
+function setDeltaHue(val){
+    const url = new URL("/rate", baseURI);
+    url.search=`?dv=${val}`;
+    console.log(url.search);
+    let pr = fetch(url, {
+        method: 'GET',
+    });
+}
+
+function setBrightPixels(c){
+    valPixels = c;
+    sendPixelColor();
+}
+
+function setSatPixels(c){
+    satPixels = c;
+    sendPixelColour();
+}
+
+function configure(){
+    drawRGB("rgbPixels", function(h){
+        huePixels = h;
+        sendPixelColour();
+    });
+ 
+}
+
+    </script>
+</head>
+
+<body onload="configure()">
+    <h1>Pixel String</h1>
+    <h2>Display Colours</h2>
+    <fieldset>
+        <legend>String colour and brightness</legend>
+        <div class="grid">
+
+            <label for="rgbPixels">Colour</label>
+            <canvas id="rgbPixels"> </canvas>
+            
+            <label for="brightnessPixels">Brightness</label>
+            <input id="brightnessPixels" type="range" min="0" max="1.0" step="0.001" value="0.5"
+                onchange="setBrightPixels(this.value)" />
+            <label for="satPixels">Saturation</label>
+            <input id="satPixels" type="range" min="0" max="1.0" step="0.001" value="1.0"
+                onchange="setSatPixels(this.value)" />
+        </div>
+    </fieldset>
+ 
+    <fieldset>
+        <legend>Modes</legend>
+        <div >
+            <label for="chase">Enable Chase</label>
+            <input id="chase" type="checkbox" checked onchange="setChase(this.checked)"/>
+       </div>
+        <div >
+            <label for="rainbow">Enable Rainbow</label>
+            <input id="rainbow" type="checkbox" checked onchange="setRainbow(this.checked)"/>
+       </div>
+       <div>
+        <label for="deltahue">Hue change for rainbow</label>
+            <input id="deltahue" type="range" min="0" max="0.25" step="0.001" value="0.01"
+                onchange="setDeltaHue(this.value)" />
+       </div>
+    </fieldset>
+
+</body>
+
+</html>

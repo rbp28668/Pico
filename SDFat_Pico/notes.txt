@@ -1,0 +1,27 @@
+
+
+
+SdSpiConfig(SdCsPin_t cs, uint8_t opt, uint32_t maxSpeed, SpiPort_t* port) :
+    csPin(cs), options(opt), maxSck(maxSpeed), spiPort(port) {}
+
+In SdSpiDriver.h SpiPort_t is typedefed as SdSpiBaseClass
+#elif SPI_DRIVER_SELECT == 3
+class SdSpiBaseClass;
+/** Port type for extrernal SPI driver. */
+typedef SdSpiBaseClass  SpiPort_t;
+
+So you create your own driver and pass it in via SdSpiConfig port property.
+
+SdFs sd;
+
+#define SD_CONFIG SdSpiConfig(SD_CS, SHARED_SPI, SD_SCK_MHZ(10))
+    if (sd.begin(SD_CONFIG)) {
+
+
+SpiSdConfig gets passed into your driver's begin method:
+void SdSpiRpiPico::begin(SdSpiConfig config){
+
+
+
+SdFat.h
+References to Print* and print_t*   

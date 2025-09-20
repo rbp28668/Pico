@@ -1,0 +1,9 @@
+Different values of ADC readings from the LDR:
+
+dark room with hand over LDR - 62
+dark room 700
+lights turned up full 3786
+morning indirect sun 3090, 3148
+sun and lights 3840
+
+

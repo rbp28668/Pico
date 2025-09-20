@@ -1,0 +1,349 @@
+<html>
+<head>
+    <title>BCD Clock</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+     <style>
+         legend {
+            font-style: italic;
+            font-weight: bold;
+        }
+        fieldset {
+            margin-bottom:7px;
+            max-width: 1024px;
+        }
+        canvas {
+            border: 1px solid #000000;
+            height: 20;
+            width: 100%;
+            grid-column: 1;
+        }
+
+        input[type='range'] {
+            width: 100%;
+        }
+        input[type='number'] {
+            width: 100%;
+            max-width: 10em;
+        }
+
+        .grid {
+            display: grid;
+            row-gap: 10px;
+            grid-template-columns: auto;
+        }
+
+        input {
+            grid-column: 1;
+        }
+ 
+        label {
+            grid-column: 1;
+        }
+
+        @media screen and (min-width: 550px) {
+        .grid {
+            display: grid;
+            column-gap: 20px;
+            grid-template-columns: 100px auto 10em;
+        }
+
+        input {
+            grid-column: 2;
+        }
+ 
+        label {
+            grid-column: 1;
+        }
+
+        canvas {
+            border: 1px solid #000000;
+            height: 20;
+            width: 100%;
+            grid-column: 2;
+        }
+
+        .c3 {
+            grid-column: 3;
+        }
+
+        .r1 {
+            grid-row: 1;
+        }
+
+        .r2 {
+            grid-row: 2;
+        }
+
+        .r3 {
+            grid-row: 3;
+        }
+
+        .r4 {
+            grid-row: 4;
+        }
+    }
+    </style>
+
+    <script>
+
+var baseURI = document.baseURI;
+//baseURI="http://192.168.0.62:8080";
+
+// Values for Digit Colour
+var hueDigits = 0;
+var satDigits = 1;
+var valDigits = 1;
+
+// values for colons.
+var hueColons = 0;
+var satColons = 1;
+var valColons = 1;
+
+
+function hsvToRgb( hue,  saturation, value){
+    let r = g = b = 0;
+
+    if(hue > 1.0) hue = 1.0;
+    if(saturation > 1.0) saturation = 1.0;
+    if(value > 1.0) value = 1.0;
+
+    const h = Math.floor(hue * 6);
+    const f = hue * 6 - h;
+    const p = value * (1 - saturation);
+    const q = value * (1 - f * saturation);
+    const t = value * (1 - (1 - f) * saturation);
+
+    if (h == 0) {
+        r = value;
+        g = t;
+        b = p;
+    } else if (h == 1) {
+        r = q;
+        g = value;
+        b = p;
+    } else if (h == 2) {
+        r = p;
+        g = value;
+        b = t;
+    } else if (h == 3) {
+        r = p;
+        g = q;
+        b = value;
+    } else if (h == 4) {
+        r = t;
+        g = p;
+        b = value;
+    } else if (h <= 6) {
+        r = value;
+        g = p;
+        b = q;
+    } 
+
+    function hex(v){
+        let h = Math.floor(v).toString(16);
+        return h.length == 1 ? '0'+ h : h;
+    }
+
+    const rgb = '#' + 
+        hex(r * 255) +
+        hex(g * 255)  +
+        hex(b * 255);
+    return rgb;
+}
+// Function for filling in the hue picker
+function h2RGB(hue, data, index) {
+
+    let r = g = b = 0;
+
+    if (hue > 1.0) hue = 1.0;
+
+    let h = Math.floor(hue * 6);
+    let f = hue * 6 - h;
+    let p = 0;
+    let q = (1 - f);
+    let t = f;
+
+    if (h == 0) {
+        r = 1;
+        g = t;
+        b = p;
+    } else if (h == 1) {
+        r = q;
+        g = 1;
+        b = p;
+    } else if (h == 2) {
+        r = p;
+        g = 1;
+        b = t;
+    } else if (h == 3) {
+        r = p;
+        g = q;
+        b = 1;
+    } else if (h == 4) {
+        r = t;
+        g = p;
+        b = 1;
+    } else if (h <= 6) {
+        r = 1;
+        g = p;
+        b = q;
+    }
+
+    data[index + 0] = Math.floor(r * 255);
+    data[index + 1] = Math.floor(g * 255);
+    data[index + 2] = Math.floor(b * 255);
+    data[index + 3] = 255;
+
+}
+
+function drawRGB(name, onclick) {
+    var c = document.getElementById(name);
+    var ctx = c.getContext("2d");
+
+    const imageData = ctx.getImageData(0, 0, c.width, c.height);
+    const data = imageData.data;
+    let index = 0;
+    for (let iy = 0; iy < imageData.height; iy++) {
+        for (let ix = 0; ix < imageData.width; ix++) {
+            h2RGB(ix / imageData.width, data, index);
+            index += 4; // bytes per pixel
+        }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    function pick(event) {
+        const bounding = c.getBoundingClientRect();
+        const x = event.clientX - bounding.left;
+        const y = event.clientY - bounding.top;
+        const hue = x / bounding.width;
+        if(onclick){
+            onclick(hue);
+        }
+        return hue;
+    }
+
+    c.addEventListener("click", (event) => pick(event, undefined));
+}
+
+// Send settings for digit colour & brightness
+function sendDigits(){
+    console.log(hueDigits);
+    const url = new URL("/digitshsv", baseURI);
+    url.search=`?h=${hueDigits}&s=${satDigits}&v=${valDigits}`;
+    let pr = fetch(url, {
+        method: 'GET',
+    });
+}
+
+function sendDigitsRGB(){
+    const url = new URL("/digits", baseURI);
+    const rgb = hsvToRgb( hueDigits,  satDigits, valDigits);
+    url.search=`?rgb=${rgb}`;
+    let pr = fetch(url, {
+        method: 'GET',
+    });
+}
+// Send settings for colon colour & brightness
+function sendColons() {
+    const url = new URL("/colonshsv", baseURI);
+    url.search=`?h=${hueColons}&s=${satColons}&v=${valColons}`;
+    let pr = fetch(url, {
+        method: 'GET',
+    }); 
+}
+
+function sendColonsRGB() {
+    const url = new URL("/colons", baseURI);
+    const rgb = hsvToRgb( hueColons,  satColons, valColons);
+    url.search=`?rgb=${rgb}`;
+    let pr = fetch(url, {
+        method: 'GET',
+    }); 
+}
+function setBrightDigits(b){
+    valDigits = b;
+    sendDigits();
+};
+function setSatDigits(s){
+    satDigits = s;
+    sendDigits();
+};
+function setBrightColons(b){
+    valColons = b;
+    sendColons();
+};
+function setSatColons(s){
+    satColons = s;
+    sendColons();
+};
+
+function setAutoBrightness(v){
+    const url = new URL("/autobright", baseURI);
+    url.search=`?on=${v}`;
+    let pr = fetch(url, {
+        method: 'GET',
+    }); 
+}
+
+function configure(){
+    drawRGB("rgbDigits", function(h){
+        hueDigits = h;
+        sendDigits();
+    });
+
+    drawRGB('rgbColons', function(h){
+        hueColons = h;
+        sendColons();
+    });
+}
+
+    </script>
+</head>
+
+<body onload="configure()">
+    <h1>BCD Clock</h1>
+    <h2>Display Colours</h2>
+    <fieldset>
+        <legend>Digit colour and brightness</legend>
+        <div class="grid">
+
+            <label for="rgbDigits">Colour</label>
+            <canvas id="rgbDigits"> </canvas>
+            
+            <label for="brightnessDigits">Brightness</label>
+            <input id="brightnessDigits" type="range" min="0" max="1.0" step="0.001" value="0.5"
+                onchange="setBrightDigits(this.value)" />
+            <label for="satDigits">Saturation</label>
+            <input id="satDigits" type="range" min="0" max="1.0" step="0.001" value="1.0"
+                onchange="setSatDigits(this.value)" />
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>Colon colour and brightness</legend>
+        <div class="grid">
+
+            <label for="rgbColons">Colour</label>
+            <canvas id="rgbColons"> </canvas>
+
+            <label for="brightnessColons">Brightness</label>
+            <input id="brightnessColons" type="range" min="0" max="1.0" step="0.001" value="0.5" 
+                onchange="setBrightColons(this.value)"/>
+
+            <label for="satColons">Saturation</label>
+            <input id="satColons" type="range" min="0" max="1.0" step="0.001" value="1.0"
+                onchange="setSatColons(this.value)"/>
+       </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Auto brightness</legend>
+        <div >
+            <label for="autoBrightness">Enable</label>
+            <input id="autoBrightness" type="checkbox" onchange="setAutoBrightness(this.checked)"/>
+       </div>
+    </fieldset>
+
+</body>
+
+</html>

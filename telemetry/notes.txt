@@ -1,0 +1,19 @@
+BMP 085
+
+Power +3.3 or 5V if regulator
+
+SDA to pin 26 I2C0 SDA
+SCL to Pin 27 I2C0 SCL
+
+ADXL362
+
+SPI
+Pin 1 to pin 19 SPI1 SCK
+Pin 2 to pin 20 SPI1 TX  (MOSI)
+Pin 3 to pin 16 SPI1 RX  (MISO)
+Pin 4 to pin 17 SPI1 CSn (SS)
+Pin 5 N/C
+Pin 6 N/C
+Pin 7 GND
+Pin 8 +3.3 (pin 36)
+

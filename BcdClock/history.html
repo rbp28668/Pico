@@ -1,0 +1,184 @@
+<html>
+
+<head>
+    <title>BCD Clock</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        legend {
+            font-style: italic;
+            font-weight: bold;
+        }
+
+        fieldset {
+            margin-bottom: 7px;
+            max-width: 1024px;
+        }
+
+        canvas {
+            border: 1px solid #000000;
+            height: 20;
+            width: 100%;
+            grid-column: 1;
+        }
+
+        input[type='range'] {
+            width: 100%;
+        }
+
+        input[type='number'] {
+            width: 100%;
+            max-width: 10em;
+        }
+
+        .grid {
+            display: grid;
+            row-gap: 10px;
+            grid-template-columns: auto;
+        }
+
+        input {
+            grid-column: 1;
+        }
+
+        label {
+            grid-column: 1;
+        }
+
+        @media screen and (min-width: 550px) {
+            .grid {
+                display: grid;
+                column-gap: 20px;
+                grid-template-columns: 100px auto 10em;
+            }
+
+            input {
+                grid-column: 2;
+            }
+
+            label {
+                grid-column: 1;
+            }
+
+            canvas {
+                border: 1px solid #000000;
+                height: 20;
+                width: 100%;
+                grid-column: 2;
+            }
+
+            .c3 {
+                grid-column: 3;
+            }
+
+            .r1 {
+                grid-row: 1;
+            }
+
+            .r2 {
+                grid-row: 2;
+            }
+
+            .r3 {
+                grid-row: 3;
+            }
+
+            .r4 {
+                grid-row: 4;
+            }
+        }
+    </style>
+
+    <script>
+
+        var baseURI = document.baseURI;
+        //baseURI="http://192.168.0.62:8080";
+
+
+
+        function drawData(name, value) {
+            var c = document.getElementById(name);
+            var ctx = c.getContext("2d");
+
+            console.log("Writing " + value);
+            //const imageData = ctx.getImageData(0, 0, c.width, c.height);
+
+            //ctx.beginPath();
+            ctx.lineWidth = 10;
+            const dx = c.width / 60;
+            var px = 0;
+            for (let i = 0; i < 15; ++i) {
+                var v = Number.parseInt(value.substr(i, 1), 16);
+                for (let j = 0; j < 4; ++j) {
+                    ctx.fillStyle = ((v & 0x08) != 0) ? "black" : "white";
+                    ctx.fillRect(px, 0, dx, c.height);
+                    ctx.stroke;
+                    v <<= 1;
+                    px += dx;
+
+
+                }
+            }
+            //ctx.stroke();
+        }
+
+
+
+
+        function configure() {
+       
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    const data = JSON.parse(xhttp.responseText);
+                    drawData("lastMin", data.lastMin);
+                    for(let i=0; i<24; ++i){
+                        const id = "hour" + i;
+                        drawData(id, data.hour[i]);
+                    }
+                }
+            };
+            xhttp.open("GET", "historydata", true);
+            xhttp.send();
+        }
+
+    </script>
+</head>
+
+<body onload="configure()">
+    <h1>Sensor</h1>
+    <h2>Last Minute</h2>
+    <div class=grid>
+        <label for=lastMin>Last Minute</label>
+        <canvas id=lastMin> </canvas>
+    </div>
+    <h2>Previous 24hrs</h2>
+    <div class=grid>
+        <label for=hour0>00:00</label> <canvas id=hour0> </canvas>
+        <label for=hour1>01:00</label><canvas id=hour1> </canvas>
+        <label for=hour2>02:00</label><canvas id=hour2> </canvas>
+        <label for=hour3>03:00</label><canvas id=hour3> </canvas>
+        <label for=hour4>04:00</label><canvas id=hour4> </canvas>
+        <label for=hour5>05:00</label><canvas id=hour5> </canvas>
+        <label for=hour6>06:00</label><canvas id=hour6> </canvas>
+        <label for=hour7>07:00</label> <canvas id=hour7> </canvas>
+        <label for=hour8>08:00</label><canvas id=hour8> </canvas>
+        <label for=hour9>09:00</label> <canvas id=hour9> </canvas>
+        <label for=hour10>10:00</label><canvas id=hour10> </canvas>
+        <label for=hour11>11:00</label> <canvas id=hour11> </canvas>
+        <label for=hour12>12:00</label><canvas id=hour12> </canvas>
+        <label for=hour13>13:00</label><canvas id=hour13> </canvas>
+        <label for=hour14>14:00</label><canvas id=hour14> </canvas>
+        <label for=hour15>15:00</label><canvas id=hour15> </canvas>
+        <label for=hour16>16:00</label><canvas id=hour16> </canvas>
+        <label for=hour17>17:00</label><canvas id=hour17> </canvas>
+        <label for=hour18>18:00</label><canvas id=hour18> </canvas>
+        <label for=hour19>19:00</label><canvas id=hour19> </canvas>
+        <label for=hour20>20:00</label><canvas id=hour20> </canvas>
+        <label for=hour21>21:00</label><canvas id=hour21> </canvas>
+        <label for=hour22>22:00</label><canvas id=hour22> </canvas>
+        <label for=hour23>23:00</label><canvas id=hour23> </canvas>
+    </div>
+
+</body>
+
+</html>
