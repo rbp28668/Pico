@@ -44,6 +44,20 @@ This is the basic LCD font that's used if no other font is specified.  get/set t
 ## ILI9341 fonts
 ## Adafruit fonts
 
+
+# Inheritance
+
+**Print**    --  provides basic print(..) and println(..) functions 
+
+**GFX**      --  Graphics library, all drawing comes back to writePixel unless other methods have been over-ridden.  In practice, for performance you want to override other methods.
+
+**ST_LCD/TFT_Display** -- Common functinality for the range of ST LCD controllers using SPI.
+
+**ST7735 / ST7789 / ST7796** -- specific ST controller chips (they're all very similar but different resolutions etc.)
+
+
+Other controller chips/families may derive directly from GFX.
+
 # Acknowledgments
 
 ILI9341 / ST7735 / ST7738 from Paul Stoffregen's Teensy ports of the Adafruit libraries.

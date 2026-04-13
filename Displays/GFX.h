@@ -23,7 +23,7 @@ public:
 	static const int16_t CENTER = 9998; // "magic value" to auto-centre in setCursor()
 
 
-// Color definitions
+// Color definitions.  Note, standard RGB, makes no assumptions as to implementation.
 enum Color {
   BLACK        = 0x0000,      /*   0,   0,   0 */
   NAVY         = 0x000F,      /*   0,   0, 128 */
