@@ -90,7 +90,7 @@ ST7735_pico::ST7735_pico(SPI* pspi,uint8_t cs, uint8_t rs, uint8_t rst)
 // formatting -- storage-wise this is hundreds of bytes more compact
 // than the equivalent code.  Companion function follows.
 #define DELAY 0x80
-static const uint8_t //PROGMEM
+static const uint8_t 
   Bcmd[] = {                  // Initialization commands for 7735B screens
     18,                       // 18 commands in list:
     ST7735_SWRESET,   DELAY,  //  1: Software reset, no args, w/delay
@@ -249,38 +249,6 @@ static const uint8_t //PROGMEM
       100 };                  //     100 ms delay
 
 
-// Companion code to the above tables.  Reads and issues
-// a series of LCD commands stored in byte array.
-void ST7735_pico::commandList(const uint8_t *addr)
-{
-	uint8_t  numCommands, numArgs;
-	uint16_t ms;
-
-	beginTransaction();
-	numCommands = *(addr++);		// Number of commands to follow
-	//Serial.printf("CommandList: numCmds:%d\n", numCommands); Serial.flush();
-	while(numCommands--) {				// For each command...
-		writecommand(*(addr++));	//   Read, issue command
-		numArgs  = *(addr++);	//   Number of args to follow
-		ms       = numArgs & DELAY;		//   If hibit set, delay follows args
-		numArgs &= ~DELAY;			//   Mask out delay bit
-		while(numArgs > 1) {			//   For each argument...
-			writedata(*(addr++)); //   Read, issue argument
-			numArgs--;
-		}
-
-		if (numArgs) writedata(*(addr++)); //   Read, issue argument - wait until this one completes
-		if(ms) {
-			ms = *(addr++);	// Read post-command delay time (ms)
-			if(ms == 255) ms = 500;		// If 255, delay for 500 ms
-			//Serial.printf("delay %d\n", ms); Serial.flush();
-			endTransaction();
-			delay(ms);
-			beginTransaction();
-		}
-	}
-	endTransaction();
-}
 
 
 // Initialization code common to both 'B' and 'R' type displays

@@ -26,38 +26,24 @@
 #define ST77XX_MADCTL_RGB 0x00
 
 ST7789_pico::ST7789_pico(uint8_t CS, uint8_t RS, uint8_t SID, uint8_t SCLK, uint8_t RST) 
-: ST7735_pico(CS, RS, SID, SCLK, RST) 
+: TFTDisplay(CS, RS, SID, SCLK, RST) 
 {
   // Assume the majority of ones.
   tabcolor = INIT_ST7789_TABCOLOR;
   _screenHeight = 240;
   _screenWidth = 240;   
   
-	cursor_y  = cursor_x    = 0;
-	textsize_x  = 1;
-  textsize_y  = 1;
-	textcolor = textbgcolor = 0xFFFF;
-	wrap      = true;
-	font      = NULL;
-	setClipRect();
-	setOrigin();
+
 }
 
 ST7789_pico::ST7789_pico(SPI* pspi,uint8_t CS, uint8_t RS, uint8_t RST)  : 
-      ST7735_pico(pspi, CS, RS, RST) 
+      TFTDisplay(pspi, CS, RS, RST) 
 {
   tabcolor = INIT_ST7789_TABCOLOR;
   _screenHeight = 240;
   _screenWidth = 240; 
 
-	cursor_y  = cursor_x    = 0;
-	textsize_x  = 1;
-  textsize_y  = 1;
-	textcolor = textbgcolor = 0xFFFF;
-	wrap      = true;
-	font      = NULL;
-	setClipRect();
-	setOrigin();
+
 }
 
 

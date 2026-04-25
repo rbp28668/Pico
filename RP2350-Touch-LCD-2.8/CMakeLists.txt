@@ -23,12 +23,13 @@ pico_sdk_init()
 add_executable(RPTouch28
         main.cpp
          ../PicoHardware/spi.cpp
+         ../PicoHardware/i2c.cpp
          ../Sensors/QMI8658.cpp
-        ../Displays/ST7735/ST7735_pico.cpp
+        ../Displays/ST_LCD/TFT_Display.cpp
+        ../Displays/ST_LCD/ST7789T3_pico.cpp
         ../Displays/glcdfont.c
         ../Displays/print.cpp
         ../Displays/GFX.cpp
-        ../Displays/TFT_Display.cpp
         ../Displays/fonts/font_Arial.c
         ../Displays/fonts/font_ArialBold.c
         )

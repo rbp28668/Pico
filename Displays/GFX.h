@@ -320,11 +320,17 @@ protected:
 
   //////// Colour manipulation //////
 
+  public:
 	// Pass 8-bit (each) R,G,B, get back 16-bit packed color
-	static inline uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
+	static inline constexpr uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
 		return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 	}
 
+  // Pass 8-bit (each) R,G,B, as a 32 bit integer, get back 16-bit packed color
+  static inline constexpr uint16_t color565(uint32_t rgb)
+  {
+      return ((rgb >> 8) & 0xF800) | ((rgb >> 5) & 0x07E0) | ((rgb >> 3) & 0x001F);
+  }
 	//color565toRGB		- converts 565 format 16 bit color to RGB
 	static inline void color565toRGB(uint16_t color, uint8_t &r, uint8_t &g, uint8_t &b) {
 		r = (color>>8)&0x00F8;
@@ -347,6 +353,7 @@ protected:
 		return (((r & 0x3E00) << 2) | ((g & 0x3F00) >>3) | ((b & 0x3E00) >> 9));
 	}
 
+  protected:
 
   	/**
 	 * Found in a pull request for the Adafruit framebuffer library. Clever!

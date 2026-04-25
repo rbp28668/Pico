@@ -22,8 +22,8 @@
 #include <cstdint>
 #include <string.h>
 #include <stdlib.h>
-#include "../..//PicoHardware/spi.h"
-#include "../TFT_Display.h"
+#include "../../PicoHardware/spi.h"
+#include "TFT_Display.h"
 // #include "fonts.h"
 // #include "gfxfont.h"
 
@@ -115,7 +115,6 @@ class ST7735_pico : public TFTDisplay
   uint8_t  tabcolor;
 
 
-  void commandList(const uint8_t *addr);
   void commonInit(const uint8_t *cmdList, uint8_t mode=SPI_MODE0);
    //uint8_t  spiread(void);
 

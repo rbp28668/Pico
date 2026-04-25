@@ -18,9 +18,9 @@
 
 #ifndef __ST7789_PICO_H_
 #define __ST7789_PICO_H_
-#include "ST7735_pico.h"
+#include "TFT_Display.h"
 
-class ST7789_pico : public ST7735_pico {
+class ST7789_pico : public TFTDisplay {
 
  public:
 

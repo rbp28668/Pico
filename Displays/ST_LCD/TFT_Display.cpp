@@ -1,7 +1,13 @@
 
 #include "TFT_Display.h"
 
-
+/// @brief Creates the base TFT display, setting up the IO pins.
+/// @param w is width in pixels
+/// @param h is height in pixels
+/// @param spi is SPI implementation to use
+/// @param cs is the chip select line to use - note, only used if SPI is not dedicated i.e. doesn't toggle CS itself
+/// @param dc is the command / data pin
+/// @param rst is the reset (active low) pin.  Optional
 TFTDisplay::TFTDisplay(int16_t w, int16_t h, SPI* spi, uint8_t cs, uint8_t dc, uint8_t rst)
 : GFX(w,h)
 , _spi(spi)
@@ -11,6 +17,9 @@ TFTDisplay::TFTDisplay(int16_t w, int16_t h, SPI* spi, uint8_t cs, uint8_t dc, u
 , _rowstart(0), _colstart(0)
 , _xstart(0), _ystart(0)
 {
+	// Make sure SPI set to correct format
+    spi->set_format( 8, SPI_CPOL_1, SPI_CPHA_1, SPI_MSB_FIRST);
+
 	isData = false;
 	gpio_init(_dc);
 	gpio_set_dir(_dc, GPIO_OUT);
@@ -48,19 +57,19 @@ void TFTDisplay::reset(){
  @param   dataBytes         A pointer to the Data bytes to send
  @param   numDataBytes      The number of bytes we should send
  */
-void TFTDisplay::sendCommand(uint8_t commandByte, const uint8_t *dataBytes, uint8_t numDataBytes) {
-    beginTransaction();
+// void TFTDisplay::sendCommand(uint8_t commandByte, const uint8_t *dataBytes, uint8_t numDataBytes) {
+//     beginTransaction();
 
-    writecommand(commandByte); // Send the command byte
+//     writecommand(commandByte); // Send the command byte
   
-    while (numDataBytes > 1) {
-	  writedata(*dataBytes++); // Send the data bytes
-	  numDataBytes--;
-    }
-    if (numDataBytes) writedata(*dataBytes);
+//     while (numDataBytes > 1) {
+// 	  writedata(*dataBytes++); // Send the data bytes
+// 	  numDataBytes--;
+//     }
+//     if (numDataBytes) writedata(*dataBytes);
   
-    endTransaction();
-}
+//     endTransaction();
+// }
 
 
 inline void TFTDisplay::waitTransmitComplete(void)  {
@@ -129,8 +138,12 @@ void TFTDisplay::writedata16(uint16_t d)
 	_spi->write16(d);
 }
 
-// Companion code to the above tables.  Reads and issues
-// a series of LCD commands stored in byte array.
+//  Reads and issues a series of LCD commands stored in byte array.
+//  Format is number of commands followed by the commands themselves.
+//  Each command is the command byte, 
+//  the number of data bytes to follow the command byte with an optional delay flag set,
+//  the optional data bytes.
+//  If the delay flag is set then there's a final delay byte that has the delay in mS. 
 void TFTDisplay::commandList(const uint8_t *addr)
 {
 	uint8_t  numCommands, numArgs;
