@@ -22,9 +22,13 @@ pico_sdk_init()
 
 add_executable(RPTouch28
         main.cpp
-         ../PicoHardware/spi.cpp
-         ../PicoHardware/i2c.cpp
-         ../Sensors/QMI8658.cpp
+        lcd_brightness.cpp
+        i2s.cpp
+        battery.cpp
+        ../PicoHardware/spi.cpp
+        ../PicoHardware/i2c.cpp
+        ../Sensors/QMI8658.cpp
+        ../Sensors/CST328.cpp
         ../Displays/ST_LCD/TFT_Display.cpp
         ../Displays/ST_LCD/ST7789T3_pico.cpp
         ../Displays/glcdfont.c
@@ -34,11 +38,18 @@ add_executable(RPTouch28
         ../Displays/fonts/font_ArialBold.c
         )
 
+pico_generate_pio_header(RPTouch28 ${CMAKE_CURRENT_LIST_DIR}/i2s.pio)
+
 # Pull in our pico_stdlib which pulls in commonly used features
 target_link_libraries(RPTouch28
         pico_stdlib 
         hardware_i2c
         hardware_spi
+        hardware_pwm
+        hardware_clocks
+        hardware_pio
+        hardware_dma
+        hardware_adc
         )
 
 # enable usb output, disable uart output

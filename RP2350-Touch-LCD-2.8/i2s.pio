@@ -1,0 +1,22 @@
+; The audio is 32-bit, with 16 bits allocated to each of the left and right channels, and is transmitted in the order of left channel first, then right channel.
+; I2S The rule is to transmit data starting from the most significant bit (MSB).
+;The audio is 32-bit, with 16 bits allocated to each of the left and right channels, transmitted in the order of left channel first, then right ;channel.
+;I2S specifies that data is transmitted starting from the most significant bit (MSB).
+
+.program i2s_pio
+.side_set 2
+
+;                              |--LRCLK 
+;                              ||-BCLK 
+
+set x, 14               side 0b01
+OutL:
+    out pins, 1         side 0b00
+    jmp x-- OutL        side 0b01
+out pins, 1             side 0b10
+set x, 14               side 0b11
+
+OutR:
+    out pins, 1         side 0b10
+    jmp x-- OutR        side 0b11
+out pins, 1             side 0b00

@@ -7,7 +7,7 @@
 /// A GFX 1-bit canvas context for graphics
 class GFXcanvas1 : public GFX {
 public:
-  GFXcanvas1(uint16_t w, uint16_t h);
+  GFXcanvas1(uint8_t* buff, uint16_t w, uint16_t h);
   ~GFXcanvas1(void);
   void drawPixel(int16_t x, int16_t y, uint16_t color);
   void fillScreen(uint16_t color);
@@ -30,16 +30,12 @@ protected:
 private:
   uint8_t *buffer;
 
-#ifdef __AVR__
-  // Bitmask tables of 0x80>>X and ~(0x80>>X), because X>>Y is slow on AVR
-  static const uint8_t PROGMEM GFXsetBit[], GFXclrBit[];
-#endif
 };
 
 /// A GFX 8-bit canvas context for graphics
 class GFXcanvas8 : public GFX {
 public:
-  GFXcanvas8(uint16_t w, uint16_t h);
+  GFXcanvas8(uint8_t* buff, uint16_t w, uint16_t h);
   ~GFXcanvas8(void);
   void drawPixel(int16_t x, int16_t y, uint16_t color);
   void fillScreen(uint16_t color);
@@ -66,7 +62,7 @@ private:
 ///  A GFX 16-bit canvas context for graphics
 class GFXcanvas16 : public GFX {
 public:
-  GFXcanvas16(uint16_t w, uint16_t h);
+  GFXcanvas16(uint16_t* buff, uint16_t w, uint16_t h);
   ~GFXcanvas16(void);
   void drawPixel(int16_t x, int16_t y, uint16_t color);
   void fillScreen(uint16_t color);

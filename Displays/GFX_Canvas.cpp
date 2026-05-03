@@ -25,23 +25,22 @@
    @brief    Instatiate a GFX 1-bit canvas context for graphics
    @param    w   Display width, in pixels
    @param    h   Display height, in pixels
+   @param    buff is the buffer to use, passed in as then allows static buffers.
+             must be at least ((w + 7) / 8) * h bytes.
 */
 /**************************************************************************/
-GFXcanvas1::GFXcanvas1(uint16_t w, uint16_t h) : GFX(w, h) {
+GFXcanvas1::GFXcanvas1(uint8_t* buff, uint16_t w, uint16_t h) : GFX(w, h), buffer(buff) {
   uint16_t bytes = ((w + 7) / 8) * h;
-  if ((buffer = (uint8_t *)malloc(bytes))) {
-    memset(buffer, 0, bytes);
-  }
+  buffer = buff;
+  memset(buffer, 0, bytes);
 }
 
 /**************************************************************************/
 /*!
-   @brief    Delete the canvas, free memory
+   @brief    Delete the canvas, Canvas doesn't own the memory so no free.
 */
 /**************************************************************************/
 GFXcanvas1::~GFXcanvas1(void) {
-  if (buffer)
-    free(buffer);
 }
 
 /**************************************************************************/
@@ -76,17 +75,10 @@ void GFXcanvas1::drawPixel(int16_t x, int16_t y, uint16_t color) {
     }
 
     uint8_t *ptr = &buffer[(x / 8) + y * ((WIDTH + 7) / 8)];
-#ifdef __AVR__
-    if (color)
-      *ptr |= *(&GFXsetBit[x & 7]);
-    else
-      *ptr &= *(&GFXclrBit[x & 7]);
-#else
     if (color)
       *ptr |= 0x80 >> (x & 7);
     else
       *ptr &= ~(0x80 >> (x & 7));
-#endif
   }
 }
 
@@ -363,21 +355,18 @@ void GFXcanvas1::drawFastRawHLine(int16_t x, int16_t y, int16_t w,
    @param    h   Display height, in pixels
 */
 /**************************************************************************/
-GFXcanvas8::GFXcanvas8(uint16_t w, uint16_t h) : GFX(w, h) {
+GFXcanvas8::GFXcanvas8(uint8_t* buff, uint16_t w, uint16_t h) : GFX(w, h), buffer(buff) {
   uint32_t bytes = w * h;
-  if ((buffer = (uint8_t *)malloc(bytes))) {
-    memset(buffer, 0, bytes);
-  }
+  memset(buffer, 0, bytes);
 }
 
 /**************************************************************************/
 /*!
-   @brief    Delete the canvas, free memory
+   @brief    Delete the canvas, do not free buffer - not owned.
 */
 /**************************************************************************/
 GFXcanvas8::~GFXcanvas8(void) {
-  if (buffer)
-    free(buffer);
+  
 }
 
 /**************************************************************************/
@@ -629,13 +618,13 @@ void GFXcanvas8::drawFastRawHLine(int16_t x, int16_t y, int16_t w,
    @brief    Instatiate a GFX 16-bit canvas context for graphics
    @param    w   Display width, in pixels
    @param    h   Display height, in pixels
+   @param    buff display buffer at least w * h * 2 bytes in size.
+             passed in to allow static buffers.
 */
 /**************************************************************************/
-GFXcanvas16::GFXcanvas16(uint16_t w, uint16_t h) : GFX(w, h) {
+GFXcanvas16::GFXcanvas16(uint16_t* buff,uint16_t w, uint16_t h) : GFX(w, h), buffer(buff) {
   uint32_t bytes = w * h * 2;
-  if ((buffer = (uint16_t *)malloc(bytes))) {
-    memset(buffer, 0, bytes);
-  }
+  memset(buffer, 0, bytes);
 }
 
 /**************************************************************************/
@@ -644,8 +633,6 @@ GFXcanvas16::GFXcanvas16(uint16_t w, uint16_t h) : GFX(w, h) {
 */
 /**************************************************************************/
 GFXcanvas16::~GFXcanvas16(void) {
-  if (buffer)
-    free(buffer);
 }
 
 /**************************************************************************/

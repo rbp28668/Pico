@@ -1,13 +1,21 @@
 #include <ctype.h>
 #include <stdint.h>
+#include "lcd_brightness.h"
+#include "battery.h"
 #include "../PicoHardware/i2c.h"
 #include "../PicoHardware/spi.h"
 #include "../Displays/ST_LCD/ST7789T3_pico.h"
 #include "../Sensors/QMI8658.h"
+#include "../Sensors/CST328.h"
+#include "main.h"
+
+void show_colours(ST7789T3_pico &display);
+void show_imu(Battery &battery, QMI8658 &imu, ST7789T3_pico &display);
+void draw(Battery &battery, CST328& touch, ST7789T3_pico &display);
 
 void showBar(TFTDisplay &display, int value, int y)
 {
-    int bar = (120 * value) / (16 * 8192);
+    int bar = (120 * value) / (16 * 8192); // scale summed reading to pixels
     if (bar > 0)
     {
         display.fillRect(120, y, bar, 10, 0);
@@ -64,8 +72,8 @@ int main(int argc, char **argv)
     const uint8_t SD_D3 = 24;
 
     // I2d Addresses
-    const uint8_t QMI8658_DEVICE_ADDR = QMI8658_SECONDARY_I2C;
-    const uint8_t PCF85063_DEVICE_ADDR = 0x51;
+    const uint8_t QMI8658_DEVICE_ADDR = QMI8658_SECONDARY_I2C;   // IMU
+    const uint8_t PCF85063_DEVICE_ADDR = 0x51;                   // RTC
 
     HardwareSPI spi(spi1, LCD_MISO, LCD_SCK, LCD_MOSI, 2500000);
     spi.setDedicated(LCD_CS);
@@ -73,53 +81,52 @@ int main(int argc, char **argv)
     ST7789T3_pico display(&spi, LCD_CS, LCD_D_C, LCD_RST);
     display.fillScreen(GFX::color565(GFX::CYAN));
 
-    // Turn on the display backlight
-    gpio_init(LCD_BL);
-    gpio_set_dir(LCD_BL, GPIO_OUT);
-    gpio_put(LCD_BL, 1); // on
+    LcdBrightness backlight(LCD_BL);
+    backlight.set(100);
+
 
     I2C i2c(i2c1, DEV_SDA, DEV_SCL);
     QMI8658 imu(&i2c, QMI8658_DEVICE_ADDR);
     imu.reset();
 
+    CST328 touch(&i2c,TP_RST,TP_INT, 0, 240, 320);  // no rotation,
+
+    Battery battery;  // not using battery but want to read the switch
+
     display.setTextColor(GFX::color565(GFX::BLACK));
 
-    display.setAddrWindow(0, 0, 239, 319);
-    for (int i = 0; i < 240 * 320; ++i)
-    {
-        display.pushColor(0xF800); // RED 0xF800
+
+
+    show_colours(display);
+    while(true){
+        show_imu(battery, imu, display);
+        draw(battery, touch, display);
     }
-    display.closeAddrWindow();
+    return 0;
+}
+
+void show_colours(ST7789T3_pico& display){
+    display.fillScreen(0xF800);
     display.setCursor(10, 30);
     display.print("RED");
+    sleep_ms(1000);
 
-    sleep_ms(2000);
-
-    display.setAddrWindow(0, 0, 239, 319);
-    for (int i = 0; i < 240 * 320; ++i)
-    {
-        display.pushColor(0x07E0); // GREEN 0x07E0
-    }
-    display.closeAddrWindow();
+    display.fillScreen(0x07E0); // GREEN 0x07E0
     display.setCursor(10, 30);
     display.print("GREEN");
-    sleep_ms(2000);
+    sleep_ms(1000);
 
-    display.setAddrWindow(0, 0, 239, 319);
-    for (int i = 0; i < 240 * 320; ++i)
-    {
-        display.pushColor(0x001F); // BLUE 0x001F
-    }
-    display.closeAddrWindow();
+    display.fillScreen(0x001F); // BLUE 0x001F
     display.setCursor(10, 30);
     display.print("BLUE");
-
-    sleep_ms(2000);
-
-    display.fillScreen(0xF81F); // magenta 0xF81F
+    sleep_ms(1000);
+}
+void show_imu(Battery &battery, QMI8658 &imu, ST7789T3_pico &display)
+{
+    display.fillScreen(0xF81F); // magenta 0xF81F : GFX::color565(GFX::MAGENTA)
     display.setTextColor(GFX::color565(GFX::BLACK));
 
-    while (true)
+    while (battery.get_key_level())
     {
 
         int acc_x = 0, acc_y = 0, acc_z = 0;
@@ -157,7 +164,7 @@ int main(int argc, char **argv)
         showBar(display, acc_y, y);
         y += 15;
         showBar(display, acc_z, y);
-        y += 25;
+        y += 40;
 
         showBar(display, gyro_x, y);
         y += 15;
@@ -167,7 +174,23 @@ int main(int argc, char **argv)
 
         sleep_ms(100);
     }
-
-    
-    return 0;
 }
+
+
+void draw(Battery &battery, CST328 &touch, ST7789T3_pico &display){
+    display.fillScreen(0xFFFF);  // GFX::color565(GFX::WHITE)
+    while (battery.get_key_level()) {
+        touch.read();
+        while(!touch.read_data_done);
+        CST328::Data data;
+        touch.get_touch_data(&data);
+        int size = 2 * data.points;
+         
+        for(int i=0; i<data.points; ++i){
+            display.fillRect(data.coords[i].x, data.coords[i].y, size, size, data.coords[i].pressure);
+           
+        }
+    }
+
+}
+

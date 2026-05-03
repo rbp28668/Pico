@@ -24,7 +24,7 @@ uint16_t read16(uint16_t txData = 0);
 void write(uint8_t data);
 void write16(uint16_t data);
 
-// Set this as a dedicated SPI bus that has control of its own SS (CS) pin.
+// Set this as a dedicated SPI bus that has (hardware) control of its own SS (CS) pin.
 virtual void setDedicated(uint8_t ss) = 0;
 virtual bool isDedicated() const = 0;
 
