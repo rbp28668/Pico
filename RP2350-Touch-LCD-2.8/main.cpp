@@ -9,9 +9,12 @@
 #include "../Sensors/CST328.h"
 #include "main.h"
 
+
 void show_colours(ST7789T3_pico &display);
 void show_imu(Battery &battery, QMI8658 &imu, ST7789T3_pico &display);
 void draw(Battery &battery, CST328& touch, ST7789T3_pico &display);
+void set_brightness(Battery &battery, CST328 &touch, LcdBrightness& brightness, ST7789T3_pico &display);
+
 
 void showBar(TFTDisplay &display, int value, int y)
 {
@@ -101,6 +104,7 @@ int main(int argc, char **argv)
     while(true){
         show_imu(battery, imu, display);
         draw(battery, touch, display);
+        set_brightness(battery, touch, backlight, display);
     }
     return 0;
 }
@@ -193,4 +197,21 @@ void draw(Battery &battery, CST328 &touch, ST7789T3_pico &display){
     }
 
 }
+
+void set_brightness(Battery &battery, CST328 &touch, LcdBrightness& brightness, ST7789T3_pico &display){
+    display.fillScreen(0xFFFF);  // GFX::color565(GFX::WHITE)
+    while (battery.get_key_level()) {
+        touch.read();
+        while(!touch.read_data_done);
+        CST328::Data data;
+        touch.get_touch_data(&data);
+        if(data.points > 0){
+            int pct = (data.coords[0].y * 100) / 320;  // y coordinate to percentage
+            brightness.set(pct);
+        }
+        
+    }
+
+}
+
 
