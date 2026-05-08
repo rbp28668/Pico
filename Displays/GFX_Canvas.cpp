@@ -726,14 +726,9 @@ uint16_t GFXcanvas16::getRawPixel(int16_t x, int16_t y) const {
 /**************************************************************************/
 void GFXcanvas16::fillScreen(uint16_t color) {
   if (buffer) {
-    uint8_t hi = color >> 8, lo = color & 0xFF;
-    if (hi == lo) {
-      memset(buffer, lo, WIDTH * HEIGHT * 2);
-    } else {
-      uint32_t i, pixels = WIDTH * HEIGHT;
-      for (i = 0; i < pixels; i++)
-        buffer[i] = color;
-    }
+    uint32_t i, pixels = WIDTH * HEIGHT;
+    for (i = 0; i < pixels; i++)
+      buffer[i] = color;
   }
 }
 

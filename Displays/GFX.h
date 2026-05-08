@@ -247,13 +247,11 @@ enum TextDatum {
 
 	void setClipRect(int16_t x1, int16_t y1, int16_t w, int16_t h) 
 		{ _clipx1 = x1; _clipy1 = y1; _clipx2 = x1+w; _clipy2 = y1+h; 
-			//if (Serial) Serial.printf("Set clip Rect %d %d %d %d\n", x1, y1, w, h);
 			updateDisplayClip();
 		}
 
 	void setClipRect() {
 			 _clipx1 = 0; _clipy1 = 0; _clipx2 = _width; _clipy2 = _height; 
-			//if (Serial) Serial.printf("clear clip Rect\n");
 			updateDisplayClip(); 
 		}	
 ////

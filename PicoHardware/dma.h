@@ -30,6 +30,7 @@ class Dma {
     DmaConfig getConfig() {return dma_get_channel_config(channel);}
 
     void abort() { dma_channel_abort(channel);}
+    void configure(DmaConfig config, bool trigger = false) { dma_channel_set_config( channel, config, trigger);}
     void configure(DmaConfig config, volatile void * write_addr, const volatile void *	read_addr, uint transfer_count, bool trigger=false )
         { dma_channel_configure(channel, config, write_addr, read_addr, transfer_count, trigger);}
     bool isBusy() {return dma_channel_is_busy(channel);}

@@ -43,6 +43,12 @@ virtual int read(uint8_t repeated_tx_data, uint8_t *dst, size_t len) = 0;
 virtual int write16_read16(const uint16_t *src, uint16_t *dst, size_t len) = 0;
 virtual int write16(const uint16_t *src, size_t len) = 0;
 virtual int read16(uint16_t repeated_tx_data, uint16_t *dst, size_t len) = 0;
+
+// Override these to allow use as a DMA target.  Default is no dma but hardware version
+// supports DMA.
+virtual bool supportsDMA() {return false;}
+virtual uint dreq() {return 0;}
+virtual volatile void* dma_target() { return nullptr;}
 };
 
 class HardwareSPI : public SPI{
@@ -73,6 +79,10 @@ virtual int read(uint8_t repeated_tx_data, uint8_t *dst, size_t len);
 virtual int write16_read16(const uint16_t *src, uint16_t *dst, size_t len);
 virtual int write16(const uint16_t *src, size_t len);
 virtual int read16(uint16_t repeated_tx_data, uint16_t *dst, size_t len);
+
+virtual bool supportsDMA() {return true;}
+virtual uint tx_dreq() {return SPI_DREQ_NUM(spi, true);}
+virtual volatile void* dma_target() { return &spi_get_hw(spi)->dr;}
 };
 
 
