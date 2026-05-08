@@ -9,7 +9,6 @@ class GFXcanvas1 : public GFX {
 public:
   GFXcanvas1(uint8_t* buff, uint16_t w, uint16_t h);
   ~GFXcanvas1(void);
-  void writePixel(int16_t x, int16_t y, uint16_t color);
   void drawPixel(int16_t x, int16_t y, uint16_t color);
   void fillScreen(uint16_t color);
   void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
@@ -38,7 +37,6 @@ class GFXcanvas8 : public GFX {
 public:
   GFXcanvas8(uint8_t* buff, uint16_t w, uint16_t h);
   ~GFXcanvas8(void);
-  void writePixel(int16_t x, int16_t y, uint16_t color);
   void drawPixel(int16_t x, int16_t y, uint16_t color);
   void fillScreen(uint16_t color);
   void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
@@ -66,13 +64,8 @@ class GFXcanvas16 : public GFX {
 public:
   GFXcanvas16(uint16_t* buff, uint16_t w, uint16_t h);
   ~GFXcanvas16(void);
-  void writePixel(int16_t x, int16_t y, uint16_t color);
-  void writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
-  void writeFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
-  void writeFillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
   void drawPixel(int16_t x, int16_t y, uint16_t color);
   void fillScreen(uint16_t color);
-  void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
   void byteSwap(void);
   void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
   void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
@@ -89,7 +82,6 @@ protected:
   uint16_t getRawPixel(int16_t x, int16_t y) const;
   void drawFastRawVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
   void drawFastRawHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
-  void fillRawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 
 private:
   uint16_t *buffer;
