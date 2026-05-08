@@ -1929,7 +1929,7 @@ int GFX::drawCharLCD(int16_t& cursor_x, int16_t& cursor_y, unsigned char c, uint
             }
             for (xr = 0; xr < size_x; xr++) {
               if ((x >= _displayclipx1) && (x < _displayclipx2)) {
-                writePixel(x, y, color);
+                writePixel(x, y, fgcolor);
               }
               x++;
             }
@@ -2656,7 +2656,7 @@ void GFX::writeRect(int16_t x, int16_t y, int16_t w, int16_t h,
   // TODO validate parameters
   for (int16_t iy = 0; iy < h; ++iy) {
     for (int16_t ix = 0; ix < w; ++ix) {
-      writePixel(x + ix, y + iy, *pcolors++);
+      writePixel(x + ix, y + iy, *pcolors);
     }
   }
 }
