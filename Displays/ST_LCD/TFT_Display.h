@@ -20,25 +20,8 @@ class TFTDisplay : public GFX
 
 public:
 
-   // // Standard 16 bit 5-6-5 format colours
-   // enum class Colour
-   // {
-   //    BLACK = 0x0000,
-   //    WHITE = 0xFFFF,
-   //    RED = 0xF800,
-   //    GREEN = 0x07E0,
-   //    BLUE = 0x001F,
-   //    CYAN = 0x07FF,
-   //    MAGENTA = 0xF81F,
-   //    YELLOW = 0xFFE0,
-   //    ORANGE = 0xFC00,
-   //    PINK = 0xF81F
-
-   // };
-
    // Use this to signal delay byte in init tables.
    const static uint8_t DELAY = 0x80;
-
 
    TFTDisplay(int16_t w, int16_t h, SPI *spi, uint8_t CS, uint8_t DC, uint8_t RST = 255);
 
@@ -51,16 +34,7 @@ public:
    virtual void writeLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
    virtual void endWrite(void);
 
-   // Over-ride BASIC DRAW API
-   virtual void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
-   virtual void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
-
-   // Optional and probably not necessary to change
-   virtual void drawPixel(int16_t x, int16_t y, uint16_t color);
-   virtual void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
-   virtual void drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
-
-   // Over-ride any others where we can optimise by setting address and shovelling pixels thereafter.
+   // Over-ride any others where we can optimise by setting address and streaming pixels.
    virtual void drawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg);
    virtual void drawGrayscaleBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h);
    virtual void drawRGBBitmap(int16_t x, int16_t y, const uint16_t *bitmap, int16_t w, int16_t h);
@@ -73,7 +47,6 @@ public:
    virtual void fillRectHGradient(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color1, uint16_t color2);
    virtual void fillRectVGradient(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color1, uint16_t color2);
 
-   void setBitrate(uint32_t n);
    void reset();
 
    // Allow direct access to pushing pixels into framebuffer.
@@ -83,10 +56,9 @@ public:
    void pushColors(uint16_t* colors, size_t count);
    void closeAddrWindow();
 
-   
+
 protected:
- 
-   //void sendCommand(uint8_t commandByte, const uint8_t *dataBytes, uint8_t numDataBytes);
+
    void writecommand(uint8_t c);
    void writedata(uint8_t d);
 
@@ -96,18 +68,13 @@ protected:
 
    void writedata16(uint16_t d);
 
-   // void commandList(const uint8_t *addr);
-   // void commonInit(const uint8_t *cmdList, uint8_t mode=SPI_MODE0);
-   // uint8_t  spiread(void);
-
    void waitTransmitComplete(void);
-   void beginTransaction(uint32_t clock = 20000000); //  Asserts ~SS and sets speed for this device.
+   void beginTransaction(uint32_t clock = 20000000);
    void endTransaction();
    void set8Bit();
    void set16Bit();
    void delay(uint ms);
 
-   // Sends lists of commands to the display.  Usually used for intitialisation.
    void commandList(const uint8_t *addr);
 
    // ST7735 Specific - may be used by any other driver where there's
@@ -123,28 +90,43 @@ protected:
    {
       if (x0 != old_x0 || x1 != old_x1)
       {
-         writecommand(CASET); // Column addr set
-         writedata16(x0);     // XSTART
-         writedata16(x1);     // XEND
+         writecommand(CASET);
+         writedata16(x0);
+         writedata16(x1);
          old_x0 = x0;
          old_x1 = x1;
       }
       if (y0 != old_y0 || y1 != old_y1)
       {
-         writecommand(PASET); // Row addr set
-         writedata16(y0);     // YSTART
-         writedata16(y1);     // YEND
+         writecommand(PASET);
+         writedata16(y0);
+         writedata16(y1);
          old_y0 = y0;
          old_y1 = y1;
       }
    }
 
-   // Inline helper methods for efficient horizontal/vertical line & pixel writing
+   // Enter pixel streaming mode: sets RAMWR and switches to 16-bit data.
+   // After calling this, use fillColor() or _spi->write16() directly.
+   inline void beginPixelStream()
+   {
+      writecommand(RAMWR);
+      if (!is16Bit) set16Bit();
+      if (!isData) { waitTransmitComplete(); gpio_put(_dc, 1); isData = true; }
+   }
+
+   // Bulk fill: write the same colour `count` times using burst SPI writes.
+   void fillColor(uint16_t color, uint32_t count);
+
+   // Bulk write: send an array of pixel data using burst SPI writes.
+   void writePixels(const uint16_t *data, uint32_t count);
+
+   // Inline helper methods for efficient horizontal/vertical line & pixel writing.
+   // These apply origin offset and clip-rect bounds.
    inline void HLine(int16_t x, int16_t y, int16_t w, uint16_t color)
    {
       x += _originx;
       y += _originy;
-      // Rectangular clipping
       if ((y < _displayclipy1) || (x >= _displayclipx2) || (y >= _displayclipy2))
          return;
       if (x < _displayclipx1)
@@ -157,18 +139,14 @@ protected:
       if (w < 1)
          return;
       setAddr(x, y, x + w - 1, y);
-      writecommand(RAMWR);
-      do
-      {
-         writedata16(color);
-      } while (--w > 0);
+      beginPixelStream();
+      fillColor(color, w);
    }
 
    inline void VLine(int16_t x, int16_t y, int16_t h, uint16_t color)
    {
       x += _originx;
       y += _originy;
-      // Rectangular clipping
       if ((x < _displayclipx1) || (x >= _displayclipx2) || (y >= _displayclipy2))
          return;
       if (y < _displayclipy1)
@@ -181,11 +159,8 @@ protected:
       if (h < 1)
          return;
       setAddr(x, y, x, y + h - 1);
-      writecommand(RAMWR);
-      do
-      {
-         writedata16(color);
-      } while (--h > 0);
+      beginPixelStream();
+      fillColor(color, h);
    }
 
    inline void Pixel(int16_t x, int16_t y, uint16_t color)
@@ -195,25 +170,18 @@ protected:
       if ((x < _displayclipx1) || (x >= _displayclipx2) || (y < _displayclipy1) || (y >= _displayclipy2))
          return;
       setAddr(x, y, x, y);
-      writecommand(RAMWR);
-      writedata16(color);
+      beginPixelStream();
+      _spi->write16(color);
    }
 
    // Comms
    SPI *_spi;
-   
-   #if TFT_USE_DMA
-   Dma dma;
-   uint16_t dmaColour = 0; // usual source of dma transfers - don't use stack.
-   #endif
+   uint8_t _rst;
+   uint8_t _cs, _dc;
+   bool is16Bit;
+   bool isData;
 
-   uint8_t _rst;     // reset pin
-   uint8_t _cs;      // chip select (aka slave select) pin
-   uint8_t _dc;      // data or command pin
-   bool is16Bit; // true if set for 16 bit transfers
-   bool isData;  // true if set for data, false if command
-
-   unsigned long _clock; // SPI clock (if used)
+   unsigned long _clock;
 
    // Common controller opcodes. May be modified in subclasses
    uint8_t NOP = 0x00;
@@ -222,8 +190,8 @@ protected:
    uint8_t RAMWR = 0x2C;
    uint8_t RAMRD = 0x2E;
 
-   uint16_t _colstart, _rowstart; // Offsets into display RAM to align with physical display
-   uint16_t _xstart, _ystart;     // _colstart and _rowstart allowing for rotation.
+   uint16_t _colstart, _rowstart;
+   uint16_t _xstart, _ystart;
 };
 
 #endif // _TFT_DISPLAY_H_

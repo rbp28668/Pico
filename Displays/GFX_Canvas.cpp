@@ -45,6 +45,18 @@ GFXcanvas1::~GFXcanvas1(void) {
 
 /**************************************************************************/
 /*!
+    @brief  Write a pixel to the canvas framebuffer (called by base GFX)
+    @param  x     x coordinate
+    @param  y     y coordinate
+    @param  color Binary (on or off) color to fill with
+*/
+/**************************************************************************/
+void GFXcanvas1::writePixel(int16_t x, int16_t y, uint16_t color) {
+  drawPixel(x, y, color);
+}
+
+/**************************************************************************/
+/*!
     @brief  Draw a pixel to the canvas framebuffer
     @param  x     x coordinate
     @param  y     y coordinate
@@ -371,6 +383,18 @@ GFXcanvas8::~GFXcanvas8(void) {
 
 /**************************************************************************/
 /*!
+    @brief  Write a pixel to the canvas framebuffer (called by base GFX)
+    @param  x   x coordinate
+    @param  y   y coordinate
+    @param  color 8-bit Color to fill with. Only lower byte of uint16_t is used.
+*/
+/**************************************************************************/
+void GFXcanvas8::writePixel(int16_t x, int16_t y, uint16_t color) {
+  drawPixel(x, y, color);
+}
+
+/**************************************************************************/
+/*!
     @brief  Draw a pixel to the canvas framebuffer
     @param  x   x coordinate
     @param  y   y coordinate
@@ -637,6 +661,81 @@ GFXcanvas16::~GFXcanvas16(void) {
 
 /**************************************************************************/
 /*!
+    @brief  Write a pixel to the canvas framebuffer (called by base GFX)
+    @param  x   x coordinate
+    @param  y   y coordinate
+    @param  color 16-bit 5-6-5 Color to fill with
+*/
+/**************************************************************************/
+void GFXcanvas16::writePixel(int16_t x, int16_t y, uint16_t color) {
+  if ((x < 0) || (y < 0) || (x >= _width) || (y >= _height))
+    return;
+
+  int16_t t;
+  switch (rotation) {
+  case 1:
+    t = x;
+    x = WIDTH - 1 - y;
+    y = t;
+    break;
+  case 2:
+    x = WIDTH - 1 - x;
+    y = HEIGHT - 1 - y;
+    break;
+  case 3:
+    t = x;
+    x = y;
+    y = HEIGHT - 1 - t;
+    break;
+  }
+  buffer[x + y * WIDTH] = color;
+}
+
+void GFXcanvas16::writeFastHLine(int16_t x, int16_t y, int16_t w,
+                                 uint16_t color) {
+  if ((y < 0) || (y >= _height) || (x >= _width) || (w <= 0))
+    return;
+  if (x < 0) {
+    w += x;
+    x = 0;
+  }
+  if (x + w > _width)
+    w = _width - x;
+  if (w <= 0)
+    return;
+  drawFastHLine(x, y, w, color);
+}
+
+void GFXcanvas16::writeFastVLine(int16_t x, int16_t y, int16_t h,
+                                 uint16_t color) {
+  if ((x < 0) || (x >= _width) || (y >= _height) || (h <= 0))
+    return;
+  if (y < 0) {
+    h += y;
+    y = 0;
+  }
+  if (y + h > _height)
+    h = _height - y;
+  if (h <= 0)
+    return;
+  drawFastVLine(x, y, h, color);
+}
+
+void GFXcanvas16::writeFillRect(int16_t x, int16_t y, int16_t w, int16_t h,
+                                uint16_t color) {
+  if ((x >= _width) || (y >= _height) || (w <= 0) || (h <= 0))
+    return;
+  if (x < 0) { w += x; x = 0; }
+  if (y < 0) { h += y; y = 0; }
+  if (x + w > _width) w = _width - x;
+  if (y + h > _height) h = _height - y;
+  if (w <= 0 || h <= 0)
+    return;
+  fillRect(x, y, w, h, color);
+}
+
+/**************************************************************************/
+/*!
     @brief  Draw a pixel to the canvas framebuffer
     @param  x   x coordinate
     @param  y   y coordinate
@@ -726,9 +825,18 @@ uint16_t GFXcanvas16::getRawPixel(int16_t x, int16_t y) const {
 /**************************************************************************/
 void GFXcanvas16::fillScreen(uint16_t color) {
   if (buffer) {
-    uint32_t i, pixels = WIDTH * HEIGHT;
-    for (i = 0; i < pixels; i++)
-      buffer[i] = color;
+    uint8_t hi = color >> 8, lo = color & 0xFF;
+    if (hi == lo) {
+      memset(buffer, lo, WIDTH * HEIGHT * 2);
+    } else {
+      uint32_t color32 = ((uint32_t)color << 16) | color;
+      uint32_t *ptr32 = (uint32_t *)buffer;
+      uint32_t pairs = (WIDTH * HEIGHT) >> 1;
+      for (uint32_t i = 0; i < pairs; i++)
+        ptr32[i] = color32;
+      if ((WIDTH * HEIGHT) & 1)
+        buffer[WIDTH * HEIGHT - 1] = color;
+    }
   }
 }
 
@@ -750,6 +858,83 @@ void GFXcanvas16::byteSwap(void) {
     uint32_t i, pixels = WIDTH * HEIGHT;
     for (i = 0; i < pixels; i++)
       buffer[i] = __builtin_bswap16(buffer[i]);
+  }
+}
+
+/**************************************************************************/
+/*!
+   @brief    Fill a rectangle with one color, with clipping and rotation
+   @param    x   Top left corner x coordinate
+   @param    y   Top left corner y coordinate
+   @param    w   Width in pixels
+   @param    h   Height in pixels
+   @param    color   16-bit 5-6-5 Color to fill with
+*/
+/**************************************************************************/
+void GFXcanvas16::fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
+                           uint16_t color) {
+  if (!buffer || w <= 0 || h <= 0)
+    return;
+  if (x >= _width || y >= _height)
+    return;
+  if (x < 0) { w += x; x = 0; }
+  if (y < 0) { h += y; y = 0; }
+  if (x + w > _width) w = _width - x;
+  if (y + h > _height) h = _height - y;
+  if (w <= 0 || h <= 0)
+    return;
+
+  if (getRotation() == 0) {
+    fillRawRect(x, y, w, h, color);
+  } else if (getRotation() == 1) {
+    int16_t rx = WIDTH - 1 - (y + h - 1);
+    int16_t ry = x;
+    fillRawRect(rx, ry, h, w, color);
+  } else if (getRotation() == 2) {
+    int16_t rx = WIDTH - 1 - (x + w - 1);
+    int16_t ry = HEIGHT - 1 - (y + h - 1);
+    fillRawRect(rx, ry, w, h, color);
+  } else {
+    int16_t rx = y;
+    int16_t ry = HEIGHT - 1 - (x + w - 1);
+    fillRawRect(rx, ry, h, w, color);
+  }
+}
+
+/**************************************************************************/
+/*!
+   @brief    Fill a rectangle directly into the raw buffer (no rotation)
+   @param    x   Top left corner x coordinate (raw)
+   @param    y   Top left corner y coordinate (raw)
+   @param    w   Width in pixels
+   @param    h   Height in pixels
+   @param    color   16-bit 5-6-5 Color to fill with
+*/
+/**************************************************************************/
+void GFXcanvas16::fillRawRect(int16_t x, int16_t y, int16_t w, int16_t h,
+                              uint16_t color) {
+  uint16_t *row = buffer + y * WIDTH + x;
+  // Fill first row using 32-bit writes
+  uint16_t *ptr = row;
+  int16_t remain = w;
+  if (remain > 0 && ((uintptr_t)ptr & 2)) {
+    *ptr++ = color;
+    remain--;
+  }
+  uint32_t color32 = ((uint32_t)color << 16) | color;
+  uint32_t *ptr32 = (uint32_t *)ptr;
+  int16_t pairs = remain >> 1;
+  for (int16_t i = 0; i < pairs; i++) {
+    *ptr32++ = color32;
+  }
+  if (remain & 1) {
+    *(uint16_t *)ptr32 = color;
+  }
+  // Copy first row to subsequent rows
+  uint16_t *dst = row + WIDTH;
+  for (int16_t r = 1; r < h; r++) {
+    memcpy(dst, row, w * sizeof(uint16_t));
+    dst += WIDTH;
   }
 }
 
@@ -894,8 +1079,24 @@ void GFXcanvas16::drawFastRawVLine(int16_t x, int16_t y, int16_t h,
 void GFXcanvas16::drawFastRawHLine(int16_t x, int16_t y, int16_t w,
                                    uint16_t color) {
   // x & y already in raw (rotation 0) coordinates, no need to transform.
-  uint32_t buffer_index = y * WIDTH + x;
-  for (uint32_t i = buffer_index; i < buffer_index + w; i++) {
-    buffer[i] = color;
+  uint16_t *ptr = buffer + y * WIDTH + x;
+
+  // Handle odd start for 32-bit alignment
+  if (w > 0 && ((uintptr_t)ptr & 2)) {
+    *ptr++ = color;
+    w--;
+  }
+
+  // Write two pixels at a time using 32-bit writes
+  uint32_t color32 = ((uint32_t)color << 16) | color;
+  uint32_t *ptr32 = (uint32_t *)ptr;
+  int16_t pairs = w >> 1;
+  for (int16_t i = 0; i < pairs; i++) {
+    *ptr32++ = color32;
+  }
+
+  // Handle trailing pixel
+  if (w & 1) {
+    *(uint16_t *)ptr32 = color;
   }
 }
