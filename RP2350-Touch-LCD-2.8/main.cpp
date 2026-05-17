@@ -275,7 +275,7 @@ void horizon(Battery &battery, I2C &i2c, ST7789T3_pico &display)
 {
     display.fillScreen(0x001F); // Blue
 
-    GFX& disp = display;
+    GFX& disp = canvas;
 
     disp.setTextColor(GFX::color565(GFX::WHITE));
 
@@ -297,15 +297,16 @@ void horizon(Battery &battery, I2C &i2c, ST7789T3_pico &display)
             float yaw = att.z;
 
 
-            auto imu = sf.lastImuSample();
-            float x = imu.accel.x;
-            float y = imu.accel.y;
-            roll = atan2(x,y);
-            pitch = 0;
-            // x -> -ve down, +ve up
-            // y -> +ve rolled left, -ve rolled right
-            // z -> -ve pitched down +ve , pitched up
-            
+            // auto imu = sf.lastImuSample();
+            // // x -> -ve down, +ve up
+            // // y -> +ve rolled left, -ve rolled right
+            // // z -> -ve pitched down +ve , pitched up
+  
+            // float x = -imu.accel.x;
+            // float y = -imu.accel.y;
+            // roll = atan2f(y,x);
+            // pitch = 0;
+              
             draw_artificial_horizon( pitch, roll, disp); 
             disp.setCursor(10, 30);
             disp.print(roll);
@@ -315,11 +316,11 @@ void horizon(Battery &battery, I2C &i2c, ST7789T3_pico &display)
             disp.print(yaw);
 
 
-            //display.setAddrWindow(0,0,240,320);
-            //display.pushColors(canvas_buffer, 240 * 320);
-            //display.closeAddrWindow();
+            display.setAddrWindow(0,0,240,320);
+            display.pushColors(canvas_buffer, 240 * 320);
+            display.closeAddrWindow();
 
-            sleep_ms(100);
+            //sleep_ms(100);
         }
     }
     wait_released(battery);

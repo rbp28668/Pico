@@ -64,6 +64,15 @@ class GFXcanvas16 : public GFX {
 public:
   GFXcanvas16(uint16_t* buff, uint16_t w, uint16_t h);
   ~GFXcanvas16(void);
+
+  // Implement transaction API
+  virtual void writePixel(int16_t x, int16_t y, uint16_t color);
+  // virtual void writeFillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
+  // virtual void writeFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
+  // virtual void writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
+  // virtual void writeLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
+
+
   void drawPixel(int16_t x, int16_t y, uint16_t color);
   void fillScreen(uint16_t color);
   void byteSwap(void);
