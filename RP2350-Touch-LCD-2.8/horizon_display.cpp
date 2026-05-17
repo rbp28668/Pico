@@ -23,7 +23,7 @@ void draw_artificial_horizon(float pitch, float roll, GFX& display) {
     // 1. Pre-calculate trig for performance
     float cos_r = cos(roll);
     float sin_r = sin(roll);
-    float tan_r = tan(roll);
+    float tan_r = tan(-roll); // keep horizon and pitch bars aligned.
 
     // 2. Clear background to sky (Blue)
     display.fillRect(0, 0, WIDTH, HEIGHT, COLOR_SKY_BLUE);

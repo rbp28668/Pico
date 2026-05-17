@@ -613,6 +613,12 @@ void GFXcanvas8::drawFastRawHLine(int16_t x, int16_t y, int16_t w,
   memset(buffer + y * WIDTH + x, color, w);
 }
 
+
+/////////////////////////////////////////////////////////////////////////////////
+///  GFXCanvas 16
+/////////////////////////////////////////////////////////////////////////////////
+
+
 /**************************************************************************/
 /*!
    @brief    Instatiate a GFX 16-bit canvas context for graphics
@@ -634,6 +640,49 @@ GFXcanvas16::GFXcanvas16(uint16_t* buff,uint16_t w, uint16_t h) : GFX(w, h), buf
 /**************************************************************************/
 GFXcanvas16::~GFXcanvas16(void) {
 }
+
+/// @brief Transaction API - write a single pixel, allowing for rotation.
+/// @param x 
+/// @param y 
+/// @param color 
+void GFXcanvas16::writePixel(int16_t x, int16_t y, uint16_t color){
+    if ((x < 0) || (y < 0) || (x >= _width) || (y >= _height))
+      return;
+
+    int16_t t;
+    switch (rotation) {
+    case 1:
+      t = x;
+      x = WIDTH - 1 - y;
+      y = t;
+      break;
+    case 2:
+      x = WIDTH - 1 - x;
+      y = HEIGHT - 1 - y;
+      break;
+    case 3:
+      t = x;
+      x = y;
+      y = HEIGHT - 1 - t;
+      break;
+    }
+
+    buffer[x + y * WIDTH] = color;
+
+}
+
+// void GFXcanvas16::writeFillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color){
+
+// }
+// void GFXcanvas16::writeFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color){
+
+// }
+// void GFXcanvas16::writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color){
+
+// }
+// void GFXcanvas16::writeLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color){
+
+// }
 
 /**************************************************************************/
 /*!
