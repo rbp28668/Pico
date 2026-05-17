@@ -1,20 +1,25 @@
 #include <ctype.h>
 #include <stdint.h>
-#include "lcd_brightness.h"
-#include "battery.h"
 #include "../PicoHardware/i2c.h"
 #include "../PicoHardware/spi.h"
+#include "../Displays/GFX_Canvas.h"
 #include "../Displays/ST_LCD/ST7789T3_pico.h"
 #include "../Sensors/QMI8658.h"
 #include "../Sensors/CST328.h"
+#include "lcd_brightness.h"
+#include "battery.h"
+#include "horizon_display.h"
+#include "SensorFusion/SensorFusion.h"
 #include "main.h"
-
 
 void show_colours(ST7789T3_pico &display);
 void show_imu(Battery &battery, QMI8658 &imu, ST7789T3_pico &display);
-void draw(Battery &battery, CST328& touch, ST7789T3_pico &display);
-void set_brightness(Battery &battery, CST328 &touch, LcdBrightness& brightness, ST7789T3_pico &display);
+void draw(Battery &battery, CST328 &touch, ST7789T3_pico &display);
+void set_brightness(Battery &battery, CST328 &touch, LcdBrightness &brightness, ST7789T3_pico &display);
+void horizon(Battery &battery, I2C &i2c, ST7789T3_pico &display);
 
+uint16_t canvas_buffer[240 * 320];
+GFXcanvas16 canvas(canvas_buffer, 240, 320);
 
 void showBar(TFTDisplay &display, int value, int y)
 {
@@ -32,6 +37,14 @@ void showBar(TFTDisplay &display, int value, int y)
         display.fillRect(120, y, 120, 10, 0xF81F);
     }
 }
+
+// Wait for the battery button to be released.
+void wait_released(Battery &battery)
+{
+    while (!battery.get_key_level())
+        ;
+}
+
 int main(int argc, char **argv)
 {
 
@@ -75,10 +88,10 @@ int main(int argc, char **argv)
     const uint8_t SD_D3 = 24;
 
     // I2d Addresses
-    const uint8_t QMI8658_DEVICE_ADDR = QMI8658_SECONDARY_I2C;   // IMU
-    const uint8_t PCF85063_DEVICE_ADDR = 0x51;                   // RTC
+    const uint8_t QMI8658_DEVICE_ADDR = QMI8658_SECONDARY_I2C; // IMU
+    const uint8_t PCF85063_DEVICE_ADDR = 0x51;                 // RTC
 
-    HardwareSPI spi(spi1, LCD_MISO, LCD_SCK, LCD_MOSI, 2500000);
+    HardwareSPI spi(spi1, LCD_MISO, LCD_SCK, LCD_MOSI, 25000000); // Run SPI at 25MHz
     spi.setDedicated(LCD_CS);
 
     ST7789T3_pico display(&spi, LCD_CS, LCD_D_C, LCD_RST);
@@ -87,29 +100,29 @@ int main(int argc, char **argv)
     LcdBrightness backlight(LCD_BL);
     backlight.set(100);
 
-
     I2C i2c(i2c1, DEV_SDA, DEV_SCL);
     QMI8658 imu(&i2c, QMI8658_DEVICE_ADDR);
     imu.reset();
 
-    CST328 touch(&i2c,TP_RST,TP_INT, 0, 240, 320);  // no rotation,
+    CST328 touch(&i2c, TP_RST, TP_INT, 0, 240, 320); // no rotation,
 
-    Battery battery;  // not using battery but want to read the switch
+    Battery battery; // not using battery but want to read the switch
 
     display.setTextColor(GFX::color565(GFX::BLACK));
 
-
-
     show_colours(display);
-    while(true){
+    while (true)
+    {
         show_imu(battery, imu, display);
         draw(battery, touch, display);
         set_brightness(battery, touch, backlight, display);
+        horizon(battery, i2c, display);
     }
     return 0;
 }
 
-void show_colours(ST7789T3_pico& display){
+void show_colours(ST7789T3_pico &display)
+{
     display.fillScreen(0xF800);
     display.setCursor(10, 30);
     display.print("RED");
@@ -178,40 +191,137 @@ void show_imu(Battery &battery, QMI8658 &imu, ST7789T3_pico &display)
 
         sleep_ms(100);
     }
+    wait_released(battery);
 }
 
-
-void draw(Battery &battery, CST328 &touch, ST7789T3_pico &display){
-    display.fillScreen(0xFFFF);  // GFX::color565(GFX::WHITE)
-    while (battery.get_key_level()) {
+void draw(Battery &battery, CST328 &touch, ST7789T3_pico &display)
+{
+    display.fillScreen(0xFFFF); // GFX::color565(GFX::WHITE)
+    while (battery.get_key_level())
+    {
         touch.read();
-        while(!touch.read_data_done);
+        while (!touch.read_data_done)
+            ;
         CST328::Data data;
         touch.get_touch_data(&data);
         int size = 2 * data.points;
-         
-        for(int i=0; i<data.points; ++i){
+
+        for (int i = 0; i < data.points; ++i)
+        {
             display.fillRect(data.coords[i].x, data.coords[i].y, size, size, data.coords[i].pressure);
-           
         }
     }
-
+    wait_released(battery);
 }
 
-void set_brightness(Battery &battery, CST328 &touch, LcdBrightness& brightness, ST7789T3_pico &display){
-    display.fillScreen(0xFFFF);  // GFX::color565(GFX::WHITE)
-    while (battery.get_key_level()) {
+void set_brightness(Battery &battery, CST328 &touch, LcdBrightness &brightness, ST7789T3_pico &display)
+{
+    display.fillScreen(0xFFFF); // GFX::color565(GFX::WHITE)
+    while (battery.get_key_level())
+    {
         touch.read();
-        while(!touch.read_data_done);
+        while (!touch.read_data_done)
+            ;
         CST328::Data data;
         touch.get_touch_data(&data);
-        if(data.points > 0){
-            int pct = (data.coords[0].y * 100) / 320;  // y coordinate to percentage
+        if (data.points > 0)
+        {
+            int pct = (data.coords[0].y * 100) / 320; // y coordinate to percentage
             brightness.set(pct);
         }
-        
     }
-
+    wait_released(battery);
 }
 
+class Hal : public sf::HalInterface
+{
 
+    I2C *_i2c;
+
+public:
+    Hal(I2C *i2c) : _i2c(i2c) {}
+
+    virtual bool writeRegister(uint8_t devAddr, uint8_t reg, uint8_t value)
+    {
+        _i2c->write(devAddr, &reg, 1, true);
+        _i2c->write(devAddr, &value, 1, false);
+        return true;
+    }
+
+    virtual bool readRegister(uint8_t devAddr, uint8_t reg, uint8_t *value)
+    {
+        _i2c->write(devAddr, &reg, 1, true);
+        _i2c->read(devAddr, value, 1, false);
+        return true;
+    }
+
+    virtual bool burstRead(uint8_t devAddr, uint8_t startReg,
+                           uint8_t *buffer, uint8_t length)
+    {
+        _i2c->write(devAddr, &startReg, 1, true);
+        _i2c->read(devAddr, buffer, length, false);
+        return true;
+    }
+
+    // Monotonic millisecond timestamp
+    virtual uint32_t millis()
+    {
+        uint64_t t = time_us_64();
+        return t / 1000;
+    }
+};
+
+void horizon(Battery &battery, I2C &i2c, ST7789T3_pico &display)
+{
+    display.fillScreen(0x001F); // Blue
+
+    GFX& disp = canvas;
+
+    disp.setTextColor(GFX::color565(GFX::WHITE));
+
+    Hal hal(&i2c);
+    sf::SensorFusion sf(hal, QMI8658_SECONDARY_I2C);
+
+    while (battery.get_key_level())
+    {
+        sf.processImu();
+        // TODO -  airspeed
+        // TODO - GPS
+        // TODO - baro
+        if (!sf.isCalibrating())
+        {
+            auto output = sf.output();
+            auto att = output.euler; // roll, pitch, yaw
+            float roll = att.x;
+            float pitch = att.y;
+            float yaw = att.z;
+
+
+            // auto imu = sf.lastImuSample();
+            // // x -> -ve down, +ve up
+            // // y -> +ve rolled left, -ve rolled right
+            // // z -> -ve pitched down +ve , pitched up
+  
+            // float x = -imu.accel.x;
+            // float y = -imu.accel.y;
+            // roll = atan2f(y,x);
+            // pitch = 0;
+              
+            draw_artificial_horizon( pitch, roll, disp); 
+            disp.setCursor(10, 30);
+            disp.print(roll);
+            disp.setCursor(80, 30);
+            disp.print(pitch);
+            disp.setCursor(150, 30);
+            disp.print(yaw);
+
+
+            display.setAddrWindow(0,0,240,320);
+            display.pushColors(canvas_buffer, 240 * 320);
+            display.closeAddrWindow();
+
+            //sleep_ms(100);
+        }
+    }
+    wait_released(battery);
+}

@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.16)
 set(PICO_PLATFORM rp2350)
 set(PICO_BOARD pico2 CACHE STRING "Board type")
 
+
 # Pull in PICO SDK (must be before project)
 include(pico_sdk_import.cmake)
 
@@ -25,8 +26,10 @@ add_executable(RPTouch28
         lcd_brightness.cpp
         i2s.cpp
         battery.cpp
+        horizon_display.cpp
         ../PicoHardware/spi.cpp
         ../PicoHardware/i2c.cpp
+        ../PicoHardware/dma.cpp
         ../Sensors/QMI8658.cpp
         ../Sensors/CST328.cpp
         ../Displays/ST_LCD/TFT_Display.cpp
@@ -34,8 +37,10 @@ add_executable(RPTouch28
         ../Displays/glcdfont.c
         ../Displays/print.cpp
         ../Displays/GFX.cpp
+        ../Displays/GFX_Canvas.cpp
         ../Displays/fonts/font_Arial.c
         ../Displays/fonts/font_ArialBold.c
+        
         )
 
 pico_generate_pio_header(RPTouch28 ${CMAKE_CURRENT_LIST_DIR}/i2s.pio)

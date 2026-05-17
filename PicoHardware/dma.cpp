@@ -1,6 +1,6 @@
 
 #include "hardware/dma.h"
-#include "dma.hpp"
+#include "dma.h"
 
 /// @brief Just grab the first unused channel
 Dma::Dma() 

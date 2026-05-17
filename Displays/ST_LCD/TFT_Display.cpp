@@ -19,6 +19,7 @@ TFTDisplay::TFTDisplay(int16_t w, int16_t h, SPI* spi, uint8_t cs, uint8_t dc, u
 {
 	// Make sure SPI set to correct format
     spi->set_format( 8, SPI_CPOL_1, SPI_CPHA_1, SPI_MSB_FIRST);
+	is16Bit = false;
 
 	isData = false;
 	gpio_init(_dc);
@@ -36,6 +37,17 @@ TFTDisplay::TFTDisplay(int16_t w, int16_t h, SPI* spi, uint8_t cs, uint8_t dc, u
 	  gpio_put(_rst, 1);
 	}
 
+	#if TFT_USE_DMA
+	DmaConfig cfg = dma.getDefaultConfig();
+	cfg.dreq(DREQ_SPI1_TX); // (spi->dreq());  // should be SPI 1 TX - FIXME
+	cfg.transferDataSize(DMA_SIZE_16);
+	cfg.readIncrement(false); // set true when needed - mostly setting single colour.
+	cfg.writeIncrement(false); // single register
+	cfg.enable(true);
+	dma.configure(cfg);
+	dma.setReadAddr(&dmaColour); // Always read from this colour, don't use stack values
+	dma.setWriteAddr(spi->dma_target());
+	#endif
 }
 
 void TFTDisplay::reset(){
@@ -73,6 +85,16 @@ void TFTDisplay::reset(){
 
 
 inline void TFTDisplay::waitTransmitComplete(void)  {
+	
+	// If we're using DMA make sure that's stopped
+	// moving data around first.
+	#if TFT_USE_DMA
+	while(dma.isBusy()){
+		tight_loop_contents();
+	}
+	#endif
+
+	// Now make sure SPI is finished.
 	while (_spi->busy() ){
 		tight_loop_contents();
 	}
@@ -129,8 +151,25 @@ void TFTDisplay::writedata(uint8_t c)
 	_spi->write(c);
 }
 
+#if TFT_USE_DMA
+
+// Ensures that the SPI is configured for 16-bit pixel writing.
+// Note that there *may* still be a dma operation on-going, as
+// such you *may* need to call dma.waitForFinish().
+void TFTDisplay::ensuredata16(){
+    if(!isData) waitTransmitComplete();
+	if(!is16Bit) set16Bit();
+	gpio_put(_dc,1); 
+	isData = true;
+}
+#endif
+ 
 void TFTDisplay::writedata16(uint16_t d)
 {
+	#if TFT_USE_DMA
+	dma.waitForFinish();
+	#endif
+
 	if(!isData) waitTransmitComplete();
 	if(!is16Bit) set16Bit();
 	gpio_put(_dc,1); 
@@ -192,6 +231,7 @@ void TFTDisplay::writePixel(int16_t x, int16_t y, uint16_t color){
 void TFTDisplay::writeFillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color){
 	// rudimentary clipping (drawChar w/big text requires this)
 	if((x >= _width) || (y >= _height)) return;
+	if((w <= 0 || h <= 0)) return;
 	if(x < 0) {	w += x; x = 0; 	}
 	if(y < 0) {	h += y; y = 0; 	}
 	if((x + w - 1) >= _width)  w = _width  - x;
@@ -199,11 +239,19 @@ void TFTDisplay::writeFillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint1
 
 	setAddr(x, y, x+w-1, y+h-1);
 	writecommand(RAMWR);
+
+
+	#if TFT_USE_DMA
+	ensuredata16(); // Ensure set up for 16 bit data transfers
+	dmaColour = color; // as color will go out of scope
+	dma.setTransCount(dma_encode_transfer_count(w*h), true);
+	#else
 	for(y=h; y>0; y--) {
 		for(x=w; x>0; x--) {
 			writedata16(color);
 		}
 	}
+	#endif
 }
 
 void TFTDisplay::writeFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color){
@@ -211,11 +259,19 @@ void TFTDisplay::writeFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color)
 	if((x >= _width) || (x < 0) || (y >= _height)) return;
 	if(y < 0) {	h += y; y = 0; 	}
 	if((y+h-1) >= _height) h = _height-y;
+	
 	setAddr(x, y, x, y+h-1);
 	writecommand(RAMWR);
+
+	#if TFT_USE_DMA
+	ensuredata16(); // Ensure set up for 16 bit data transfers
+	dmaColour=color;
+	dma.setTransCount(dma_encode_transfer_count(h), true);
+	#else
 	while (h-- > 0) {
 		writedata16(color);
 	}
+	#endif
 }
 
 void TFTDisplay::writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
@@ -225,9 +281,17 @@ void TFTDisplay::writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color)
 	if((x+w-1) >= _width)  w = _width-x;
 	setAddr(x, y, x+w-1, y);
 	writecommand(RAMWR);
+
+	#if TFT_USE_DMA
+	ensuredata16(); // Ensure set up for 16 bit data transfers
+	dmaColour = color;
+	dma.setTransCount(dma_encode_transfer_count(w), true);
+	#else
+
 	while (w-- > 0) {
 		writedata16(color);
 	}
+	#endif
 }
 
 void TFTDisplay::writeLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
@@ -333,6 +397,7 @@ void TFTDisplay::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color)
 	beginTransaction(_clock);
 	setAddr(x, y, x, y+h-1);
 	writecommand(RAMWR);
+
 	while (h-- > 0) {
 		writedata16(color);
 	}
@@ -681,8 +746,52 @@ void TFTDisplay::pushColor(uint16_t color)
 	writedata16(color);
 }
 
+/// @brief Pushes a stream of colours to the display.
+/// @param colors The colours to write - MUST BE A STATIC or HEAP BUFFER as DMA may be used.
+/// @param count number of words to push.
+/// @note setAddrWindow must have been called to set up the destination.
+void TFTDisplay::pushColors(uint16_t* colors, size_t count)
+{
+	#if TFT_USE_DMA
+
+	ensuredata16(); 	 // Ensure spi set up for 16 bit data transfers
+	dma.waitForFinish(); // before reconfiguring
+
+	DmaConfig cfg = dma.getConfig();
+	cfg.dreq(DREQ_SPI1_TX); // (spi->dreq());  // should be SPI 1 TX
+	cfg.transferDataSize(DMA_SIZE_16);
+	cfg.readIncrement(true); // Transfer block of data
+	cfg.writeIncrement(false); // single register
+	cfg.enable(true);
+	dma.configure(cfg);
+	dma.setReadAddr(colors);
+	dma.setWriteAddr(_spi->dma_target());
+
+	dma.setTransCount(dma_encode_transfer_count(count), true);
+	#else
+	while(count-- > 0){
+		writedata16(*colors++);
+	}
+	#endif
+
+}
+
 void TFTDisplay::closeAddrWindow()
 {
+	#if TFT_USE_DMA
+	dma.waitForFinish();
+
+	// Reconfigure DMA for normal single colour write
+	DmaConfig cfg = dma.getConfig();
+	cfg.dreq(DREQ_SPI1_TX); // (spi->dreq());  // should be SPI 1 TX
+	cfg.transferDataSize(DMA_SIZE_16);
+	cfg.readIncrement(false); // back to setting single colour.
+	cfg.writeIncrement(false); // single register
+	cfg.enable(true);
+	dma.configure(cfg);
+	dma.setReadAddr(&dmaColour);
+	#endif
+
 	writecommand(NOP);
 	endTransaction();
 }

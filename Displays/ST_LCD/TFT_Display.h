@@ -7,6 +7,14 @@
 #ifndef _TFT_DISPLAY_H_
 #define _TFT_DISPLAY_H_
 
+// Use dma by default but allow turning off.
+#ifndef TFT_NO_DMA
+#define TFT_USE_DMA 1
+#include "../../PicoHardware/dma.h"
+#else 
+#define TFT_USE_DMA 0
+#endif
+
 class TFTDisplay : public GFX
 {
 
@@ -72,6 +80,7 @@ public:
    // Call setAddrWindow, appropriate number of pushColor then closeAddrWindow in sequence
    void setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
    void pushColor(uint16_t color);
+   void pushColors(uint16_t* colors, size_t count);
    void closeAddrWindow();
 
    
@@ -80,6 +89,11 @@ protected:
    //void sendCommand(uint8_t commandByte, const uint8_t *dataBytes, uint8_t numDataBytes);
    void writecommand(uint8_t c);
    void writedata(uint8_t d);
+
+   #if TFT_USE_DMA
+   void ensuredata16();
+   #endif
+
    void writedata16(uint16_t d);
 
    // void commandList(const uint8_t *addr);
@@ -187,8 +201,15 @@ protected:
 
    // Comms
    SPI *_spi;
-   uint8_t _rst;
-   uint8_t _cs, _dc;
+   
+   #if TFT_USE_DMA
+   Dma dma;
+   uint16_t dmaColour = 0; // usual source of dma transfers - don't use stack.
+   #endif
+
+   uint8_t _rst;     // reset pin
+   uint8_t _cs;      // chip select (aka slave select) pin
+   uint8_t _dc;      // data or command pin
    bool is16Bit; // true if set for 16 bit transfers
    bool isData;  // true if set for data, false if command
 

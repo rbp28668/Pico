@@ -7,6 +7,17 @@
 #include "i2s.pio.h"
 
 
+#define BSP_I2S_BCK_PIN     2
+#define BSP_I2S_LRCK_PIN    (BSP_I2S_BCK_PIN + 1)
+#define BSP_I2S_DIN_PIN     4
+
+
+// I2S
+#define BSP_I2S_SOUND_PIO           pio1    // The pio module used
+
+
+#define BSP_I2S_FREQ                16000   // channel frequency
+
 
 I2S::I2S()
 {

@@ -67,10 +67,12 @@ enum TextDatum {
 
   GFX(int16_t w, int16_t h); // Constructor
 
+  protected:
 
   // TRANSACTION API / CORE DRAW API
   // These MAY be overridden by the subclass to provide device-specific
   // optimized code.  Otherwise 'generic' versions are used.
+  // Note these should be rotation aware.
   virtual void startWrite(void);
   virtual void writePixel(int16_t x, int16_t y, uint16_t color);
   virtual void writeFillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
@@ -78,6 +80,8 @@ enum TextDatum {
   virtual void writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
   virtual void writeLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
   virtual void endWrite(void);
+
+  public:
 
   // CONTROL API
   // These MAY be overridden by the subclass to provide device-specific
@@ -87,7 +91,9 @@ enum TextDatum {
 
   // BASIC DRAW API
   // These MAY be overridden by the subclass to provide device-specific
-  // optimized code.  Otherwise 'generic' versions are used.
+  // optimized code.  Otherwise 'generic' versions are used.  These aren't 
+  // specifically rotation aware but gain that awareness using the writeXXX 
+  // methods which must be.  
 
   // It's good to implement those, even if using transaction API
   virtual void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
@@ -247,13 +253,11 @@ enum TextDatum {
 
 	void setClipRect(int16_t x1, int16_t y1, int16_t w, int16_t h) 
 		{ _clipx1 = x1; _clipy1 = y1; _clipx2 = x1+w; _clipy2 = y1+h; 
-			//if (Serial) Serial.printf("Set clip Rect %d %d %d %d\n", x1, y1, w, h);
 			updateDisplayClip();
 		}
 
 	void setClipRect() {
 			 _clipx1 = 0; _clipy1 = 0; _clipx2 = _width; _clipy2 = _height; 
-			//if (Serial) Serial.printf("clear clip Rect\n");
 			updateDisplayClip(); 
 		}	
 ////
